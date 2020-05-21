@@ -6,16 +6,14 @@ from sys import exit
 import csv
 import subprocess
 import time
+from config_template import * #config variables
 
-BUCKET_NAME = 'bert-data-trial'
-OUTPUT_FOLDER_NAME = 'bert/output_data'
-INPUT_FOLDER_NAME = 'bert/input_data'
-DOWNLOAD_STATUS_FILE = 'downloadStatus.csv'
 
 def getFilePaths():
-    print('Fetching names of all files in folder:' + OUTPUT_FOLDER_NAME + ' of bucket:' + BUCKET_NAME)
+    print('Fetching names of all files in folder:' + CLOUD_BUCKET['emb_path'] + ' of bucket:' + CLOUD_BUCKET['name'])
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(BUCKET_NAME, prefix = OUTPUT_FOLDER_NAME)
+    prefix_path = CLOUD_BUCKET['emb_path'] if CLOUD_BUCKET['emb_path'][0] != '/' else CLOUD_BUCKET['emb_path'][1:]
+    blobs = storage_client.list_blobs(CLOUD_BUCKET['name'], prefix = prefix_path)
     #bucket = storage_client.get_bucket(BUCKET_NAME)
     blob_objs = []
     for blob in blobs:
@@ -61,17 +59,21 @@ def addFileEntry(file_name, source, destination):
     csvFile.close()
 
 
-def downloadFile(file_path):
-    file_name = file_path.replace(OUTPUT_FOLDER_NAME +'/', "")
-    destination = '/user/sparveen/cm_english_filtered/bert_output/' + file_name
+def downloadAndDelFile(file_path):
+    file_name = file_path.split("/")[-1]
+    destination = path.join(OUTPUT_FILE['path'],file_name)
     print('Downloading file... ' + file_name)
-    CMD = "gsutil cat gs://" + BUCKET_NAME + "/" + file_path + " | hadoop fs -put - " + destination
+    if OUTPUT_FILE['in_hdfs']:
+        CMD = "gsutil cat gs://" + CLOUD_BUCKET['name'] + "/" + file_path + " | hadoop fs -put - " + destination
+    else:
+        CMD = "gsutil cat gs://" + CLOUD_BUCKET['name'] + "/" + file_path + " > " + destination
+
     if runCmd(CMD) != 0:
         print('Terminating execution as previous command failed')
         exit()
     # Delete copied file from bucket
     print('Deleting copied file ' + file_name)
-    CMD  = "gsutil rm gs://" + BUCKET_NAME + "/" + file_path
+    CMD  = "gsutil rm gs://" + CLOUD_BUCKET['name'] + "/" + file_path
     if runCmd(CMD) != 0:
         print('Terminating execution as previous command failed')
         exit()
@@ -82,7 +84,7 @@ def main():
     while(True):
         file_paths = getFilePaths()
         for i in range(len(file_paths)):
-            downloadFile(file_paths[i])
+            downloadAndDelFile(file_paths[i])
         print('Sleeping for 30 mins before querying the bucket again')
         time.sleep(1800)
 
