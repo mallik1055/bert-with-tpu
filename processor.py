@@ -6,24 +6,20 @@ import time
 from google.cloud import storage
 from os import path
 from datetime import datetime
-
-BUCKET_NAME = 'bert-data-trial'
-INPUT_FOLDER_NAME = 'bert/input_data'
-OUTPUT_FOLDER_NAME = 'bert/output_data/'
-PROCESSING_STATUS_FILE = 'processingStatus.csv'
+from config_template import *
 
 def process_file(file_name):
-    prefix = 'gs://' + BUCKET_NAME+ '/bert/uncased_L-12_H-768_A-12/'
+    prefix = 'gs://' + CLOUD_BUCKET['name'] + '/' + CLOUD_BUCKET['bert_model_path'] + '/'
     vocab_file = prefix + 'vocab.txt'
     config_file = prefix + 'bert_config.json'
     checkpoint_file = prefix + 'bert_model.ckpt'
 
-    input_file = 'gs://' + BUCKET_NAME + '/' + file_name
+    input_file = 'gs://' + CLOUD_BUCKET['name'] + '/' + file_name
     #file_name contains the folder path as well, so splitting it into path and the name
     name = file_name.rsplit('/', 1)[1]
-    output_file = 'gs://' + BUCKET_NAME +'/' + OUTPUT_FOLDER_NAME + name.replace('.csv', '.json')
+    output_file = 'gs://' + CLOUD_BUCKET['name'] +'/' + CLOUD_BUCKET['emb_path'] + '/' + name.replace('.csv', '.json')
 
-    CMD = "python /home/sania_parveen/bert/extract_features.py --input_file=%s --output_file=%s  --vocab_file=%s   --bert_config_file=%s --init_checkpoint=%s  --layers=-2   --max_seq_length=128 --use_tpu=True --tpu_name=sania-parveen --batch_size=8 --master=grpc://10.240.1.2:8470 --num_tpu_cores=8" % (input_file, output_file, vocab_file, config_file, checkpoint_file)
+    CMD = "python %s --input_file=%s --output_file=%s  --vocab_file=%s --bert_config_file=%s --init_checkpoint=%s  --layers=-2   --max_seq_length=128 --use_tpu=True --tpu_name=%s --batch_size=1024 --master=grpc://%s:8470 --num_tpu_cores=8" % ( path.join(TPU['bert_home_dir'],"extract_features.py"),input_file, output_file, vocab_file, config_file, checkpoint_file,TPU['name'],TPU['ip'])
     
     start_time = datetime.now()
     if runCmd(CMD) != 0:
@@ -43,9 +39,9 @@ def addFileEntry(input_file, output_file, duration):
 
 
 def getFileNames():
-    print('Fetching names of all files in folder:' + INPUT_FOLDER_NAME + ' of bucket:' + BUCKET_NAME)
+    print('Fetching names of all files in folder:' + CLOUD_BUCKET['raw_text_path'] + ' of bucket:' + CLOUD_BUCKET['name'])
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(BUCKET_NAME, prefix = INPUT_FOLDER_NAME)
+    blobs = storage_client.list_blobs(CLOUD_BUCKET['name'] ,prefix = CLOUD_BUCKET['raw_text_path'])
     #bucket = storage_client.get_bucket(BUCKET_NAME)
     blob_objs = []
     for blob in blobs:

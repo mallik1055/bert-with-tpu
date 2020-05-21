@@ -2,11 +2,17 @@
 #GCLOUD CONFIG
 CLOUD_BUCKET = {
     'name':'524-bert-bucket',
-    'raw_text_path':'/input_data',
-    'emb_path':'/output_data',
+    'bert_model_path':'uncased_L-12_H-768_A-12', #dont add / in front of the path
+    'raw_text_path':'input_data',
+    'emb_path':'output_data',
     
 }
 
+TPU = {
+    'name':'tpu-vm',
+    'ip':'10.240.1.2',
+    'bert_home_dir':'/home/mbudida/bert/'
+}
 
 #Features extractor
 #specify index of the column in the csv
@@ -40,7 +46,7 @@ OUTPUT_FILE = {
 #Status Log files for downloader and uploader
 UPLOAD_STATUS_FILE = 'uploadStatus.csv'
 DOWNLOAD_STATUS_FILE = 'downloadStatus.csv'
-
+PROCESSING_STATUS_FILE='processingStatus.csv'
 
 
 

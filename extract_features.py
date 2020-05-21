@@ -28,6 +28,7 @@ import tokenization
 import tensorflow as tf
 import csv
 import numpy as np
+from config_template import *
 
 flags = tf.flags
 
@@ -321,23 +322,22 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
 def read_examples(input_file):
   """Read a list of `InputExample`s from an input file."""
   examples = []
-  unique_id_to_msg_id = {}
+  unique_id_to_msg_id = collections.defaultdict(dict)
   unique_id = 0
   with tf.gfile.GFile(input_file, "r") as reader:
     while True:
       line = reader.readline()
       if not line:
           break
-      """ Coverting line to a list to pass as an iterable 
+      """ Converting line to a list to pass as an iterable 
       and again typecasting output object as list to access by index"""
       row = list(csv.reader([line]))
-      message_id = int(row[0][0])
-      user_id = int(row[0][1])
-      create_at = str(row[0][3])
-      county = str(row[0][7])
-      unique_id_to_msg_id[unique_id] = (message_id, user_id, create_at, county)
+      for extra_feat,feat_idx in EXTRACT_FEATURES['extra_feat'].items():
+          #print(row[0])
+          #print(feat_idx)
+          unique_id_to_msg_id[unique_id][extra_feat] = str(row[0][feat_idx])
 
-      text = tokenization.convert_to_unicode(row[0][2])
+      text = tokenization.convert_to_unicode(row[0][EXTRACT_FEATURES['raw_text']])
       
       text = text.strip()
       text_a = None
@@ -405,12 +405,9 @@ def main(_):
     for result in estimator.predict(input_fn, yield_single_examples=True):
       unique_id = int(result["unique_id"])
       feature = unique_id_to_feature[unique_id]
-      (message_id, user_id, create_at, county) = unique_id_to_msg_id[unique_id]
-      output_json = collections.OrderedDict()
-      output_json["message_id"] = message_id
-      output_json["user_id"] = user_id
-      output_json["create_at"] = create_at
-      output_json["county"] = county
+      
+      output_json = unique_id_to_msg_id[unique_id]
+      
       all_features = [] # this stores the feature vectors for all tokens in a sentence
       all_sentences_avg_feat = []
       #all_sentences_max_feat = []
